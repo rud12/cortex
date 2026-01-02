@@ -1,0 +1,25 @@
+{
+  "name": "main",
+  "version": "1.0.0",
+  "description": "This combines microservices to run concurrently",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:auth\" \"npm run dev:inventory\" \"npm run dev:forecast\" \"npm run dev:causal\" \"npm run dev:chat\" \"npm run dev:notification\" \"npm run dev:pos\" \"npm run dev:vision\" \"npm run dev:n8n\" \"npm run dev:web\"",
+    "dev:auth": "HOST=0.0.0.0 npm --prefix cortex-backend/auth-service run dev",
+    "dev:inventory": "HOST=0.0.0.0 npm --prefix cortex-backend/inventory-service run dev",
+    "dev:forecast": "HOST=0.0.0.0 npm --prefix cortex-backend/forecasting-service run dev",
+    "dev:chat": "HOST=0.0.0.0 npm --prefix cortex-backend/chat-service run dev",
+    "dev:notification": "HOST=0.0.0.0 npm --prefix cortex-backend/notification-service run dev",
+    "dev:causal": "HOST=0.0.0.0 npm --prefix cortex-backend/causal-service run dev",
+    "dev:pos": "HOST=0.0.0.0 npm --prefix cortex-backend/pos-service run dev",
+    "dev:vision": "HOST=0.0.0.0 npm --prefix cortex-backend/vision-service run dev",
+    "dev:n8n": "npm --prefix cortex-backend/n8n run dev",
+    "dev:web": "npm --prefix cortex-web run dev",
+    "install": "npm --prefix cortex-backend/auth-service install && npm --prefix cortex-backend/inventory-service install && npm --prefix cortex-backend/forecasting-service install && npm --prefix cortex-backend/causal-service install && npm --prefix cortex-backend/chat-service install && npm --prefix cortex-backend/notification-service install && npm --prefix cortex-backend/pos-service install && npm --prefix cortex-backend/vision-service install && npm --prefix cortex-backend/n8n install && npm --prefix cortex-web install"
+  },
+  "devDependencies": {
+    "concurrently": "^7.6.0"
+  },
+  "author": "Rudra",
+  "license": "ISC"
+}
