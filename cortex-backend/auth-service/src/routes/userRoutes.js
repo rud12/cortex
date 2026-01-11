@@ -1,0 +1,11 @@
+import { Router } from 'express';
+import { createUser, listUsers, getUser, updateUser, deleteUser } from '../controllers/userController.js';
+import { authenticateToken, optionalAuthenticateToken } from '../middleware/auth.js';
+import { authorize } from '../middleware/rbac.js';
+const router = Router();
+router.post('/', optionalAuthenticateToken, createUser);
+router.get('/', authenticateToken, authorize('Administrator'), listUsers);
+router.get('/:id', authenticateToken, authorize('Administrator'), getUser);
+router.patch('/:id', authenticateToken, authorize('Administrator'), updateUser);
+router.delete('/:id', authenticateToken, authorize('Administrator'), deleteUser);
+export default router;

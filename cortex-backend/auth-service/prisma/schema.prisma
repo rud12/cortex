@@ -1,0 +1,90 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                   String   @id @default(uuid())
+  username             String   @unique
+  email                String   @unique
+  passwordHash         String
+  fullName             String
+  phone                String?
+  status               UserStatus @default(ACTIVE)
+  lastLoginAt          DateTime?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  roles                UserRole[]
+  refreshTokens        RefreshToken[]
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  // TODO: description is never read or set by any service — consider removing
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users       UserRole[]
+  // TODO: permissions relation is unused — Permission and RolePermission tables are never queried
+  permissions RolePermission[]
+}
+
+// TODO: Permission and RolePermission are never queried by any service — consider removing via migration
+model Permission {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  roles       RolePermission[]
+}
+
+model UserRole {
+  userId String
+  roleId String
+
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@unique([userId])
+}
+
+// TODO: RolePermission is never queried by any service — consider removing via migration
+model RolePermission {
+  roleId       String
+  permissionId String
+
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+model RefreshToken {
+  id         String   @id @default(uuid())
+  userId     String
+  token      String   @unique
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  createdAt  DateTime @default(now())
+  ipAddress  String?
+  userAgent  String?
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
