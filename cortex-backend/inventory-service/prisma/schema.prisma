@@ -1,0 +1,190 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Supplier {
+  id          String   @id @default(uuid())
+  name        String
+  contactName String?
+  email       String?
+  phone       String?
+  address     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  products       Product[]
+  purchaseOrders PurchaseOrder[]
+  batches        Batch[]
+  stockMovements StockMovement[]
+}
+
+model Product {
+  id            String   @id @default(uuid())
+  sku           String   @unique
+  name          String
+  description   String?
+  brand         String?
+  barcode       String?
+  retailPrice   Decimal  @db.Decimal(10, 2)
+  mrp           Decimal  @db.Decimal(10, 2)
+  reorderLevel  Int      @default(0)
+  maxStockLevel Int      @default(0)
+  imageUrl      String?
+  hasVariants   Boolean  @default(false)
+  hasExpiryDate Boolean  @default(false)
+  parentProductId String?
+  variantName   String?
+  cgstRate      Decimal? @db.Decimal(5, 2)
+  sgstRate      Decimal? @db.Decimal(5, 2)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  supplierId String?
+
+  supplier      Supplier?      @relation(fields: [supplierId], references: [id])
+  parentProduct Product?       @relation("ProductVariants", fields: [parentProductId], references: [id], onDelete: SetNull)
+  variants      Product[]      @relation("ProductVariants")
+
+  inventoryItem      InventoryItem?
+  batches            Batch[]
+  stockAlerts        StockAlert[]
+  stockMovements     StockMovement[]
+  purchaseOrderItems PurchaseOrderItem[]
+  @@index([barcode])
+  @@index([parentProductId])
+  @@unique([parentProductId, variantName])
+}
+
+model InventoryItem {
+  id             String   @id @default(uuid())
+  productId      String   @unique
+  quantityOnHand Int      @default(0)
+  updatedAt      DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model Batch {
+  id              String   @id @default(uuid())
+  productId       String
+  supplierId      String?
+  batchNumber     String
+  manufactureDate DateTime?
+  expiryDate      DateTime?
+  quantity        Int      @default(0)
+  unitCost        Decimal  @default(0) @db.Decimal(10, 2)
+  receivedAt      DateTime @default(now())
+
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  supplier Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  stockMovements StockMovement[]
+
+  @@index([productId])
+  @@index([supplierId])
+}
+
+model StockAlert {
+  id         String         @id @default(uuid())
+  productId  String
+  type       StockAlertType
+  message    String
+  createdAt  DateTime       @default(now())
+  resolvedAt DateTime?
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+}
+
+model StockMovement {
+  id        String            @id @default(uuid())
+  productId String
+  batchId   String?
+  supplierId String?
+  type      StockMovementType
+  quantity  Int
+  unitCost  Decimal?          @db.Decimal(10, 2)
+  reference String?
+  createdAt DateTime          @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  batch   Batch?   @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  supplier Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+
+  @@index([productId])
+  @@index([batchId])
+  @@index([supplierId])
+}
+
+model PurchaseOrder {
+  id           String              @id @default(uuid())
+  supplierId   String
+  status       PurchaseOrderStatus @default(DRAFT)
+  expectedDate DateTime?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  supplier Supplier            @relation(fields: [supplierId], references: [id])
+  items    PurchaseOrderItem[]
+}
+
+model PurchaseOrderItem {
+  id              String   @id @default(uuid())
+  purchaseOrderId String
+  productId       String
+  quantity        Int
+  unitPrice       Decimal  @db.Decimal(10, 2)
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  product       Product       @relation(fields: [productId], references: [id])
+
+  @@index([purchaseOrderId])
+  @@index([productId])
+}
+
+model AppSettings {
+  id            String    @id @default("default")
+  businessName  String?
+  ownerName     String?
+  businessPhone String?
+  businessEmail String?
+  businessAdminUserId String?
+  defaultCgst   Decimal   @default(0) @db.Decimal(5, 2)
+  defaultSgst   Decimal   @default(0) @db.Decimal(5, 2)
+  upiId         String?
+  themeMode     ThemeMode @default(DARK)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+enum ThemeMode {
+  DARK
+  LIGHT
+}
+
+enum StockAlertType {
+  LOW_STOCK
+  EXPIRY_SOON
+  STOCKOUT
+  OVERSTOCK
+}
+
+enum StockMovementType {
+  RECEIVE
+  SALE
+  ADJUSTMENT
+  TRANSFER
+  RETURN
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  SENT
+  RECEIVED
+  CANCELLED
+}
