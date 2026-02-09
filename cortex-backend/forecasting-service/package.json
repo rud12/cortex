@@ -1,0 +1,8 @@
+{
+  "name": "cortex-forecasting-service",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "ENABLE_HTTPS=true sh -c 'if [ -x venv/bin/python ]; then venv/bin/python app.py; elif [ -x .venv/bin/python ]; then .venv/bin/python app.py; else python3 app.py; fi'",
+    "start": "sh -c 'if [ -x venv/bin/python ]; then venv/bin/python app.py; elif [ -x .venv/bin/python ]; then .venv/bin/python app.py; else python3 app.py; fi'"
+  }
+}
