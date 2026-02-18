@@ -1,0 +1,16 @@
+{
+  "name": "n8n",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev":"N8N_HOST=0.0.0.0 N8N_PORT=5678 N8N_PROTOCOL=https N8N_SSL_KEY=../key.pem N8N_SSL_CERT=../cert.pem npx n8n"
+  },
+  "keywords": [],
+  "author": "Rudra",
+  "license": "MIT",
+  "type": "commonjs",
+  "dependencies": {
+    "n8n": "^2.0.2"
+  }
+}
