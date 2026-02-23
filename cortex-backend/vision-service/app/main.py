@@ -27,6 +27,7 @@ def http_exception_handler(req: Request, exc: HTTPException): return JSONRespons
 @app.exception_handler(Exception)
 def unhandled_exception_handler(req: Request, exc: Exception): return JSONResponse(500, error_response("Internal server error"))
 
+
 app.include_router(mobile_router)
 app.include_router(dataset_router)
 app.include_router(sessions_router)
