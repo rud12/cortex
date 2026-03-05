@@ -13,6 +13,7 @@ if __name__ == "__main__":
         "host": os.getenv("HOST", "0.0.0.0"),
         "port": int(os.getenv("PORT", "3004")),
     }
+    
     if os.getenv("ENABLE_HTTPS", "false").lower() == "true":
         base_dir = Path(__file__).resolve().parent
         ssl_dir = os.getenv("SSL_FILE_PATH", "cert/")

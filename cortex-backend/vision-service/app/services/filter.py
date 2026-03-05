@@ -188,6 +188,7 @@ class _Embedder:
         self.model = self._load_model().features.to(DEVICE).eval()
         self.pool = torch.nn.AdaptiveAvgPool2d((1, 1))
         self.transform = transforms.Compose([transforms.ToPILImage(), transforms.Resize((224, 224)), transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
+
     def _load_model(self):
         cp = _mobilenet_cache_path()
         cands = [Path(MOBILENET_WEIGHTS_PATH).expanduser(), cp, Path.home() / ".cache" / "torch" / "hub" / "checkpoints" / MOBILENET_WEIGHTS_FILE] if MOBILENET_WEIGHTS_PATH else [cp, Path.home() / ".cache" / "torch" / "hub" / "checkpoints" / MOBILENET_WEIGHTS_FILE]
@@ -240,6 +241,7 @@ class _Tracker:
             if i not in used:
                 self.tracks[self.next_id] = {"box": d["box"], "embs": [d["emb"]], "votes": [d["vote"]], "frames": 1, "missed": 0, "counted": False, "label": None}
                 self.next_id += 1
+                
     def _iou(self, a, b):
         xA, yA, xB, yB = max(a[0], b[0]), max(a[1], b[1]), min(a[2], b[2]), min(a[3], b[3])
         i = max(0, xB - xA) * max(0, yB - yA)
