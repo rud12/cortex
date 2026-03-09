@@ -241,7 +241,7 @@ class _Tracker:
             if i not in used:
                 self.tracks[self.next_id] = {"box": d["box"], "embs": [d["emb"]], "votes": [d["vote"]], "frames": 1, "missed": 0, "counted": False, "label": None}
                 self.next_id += 1
-                
+
     def _iou(self, a, b):
         xA, yA, xB, yB = max(a[0], b[0]), max(a[1], b[1]), min(a[2], b[2]), min(a[3], b[3])
         i = max(0, xB - xA) * max(0, yB - yA)
