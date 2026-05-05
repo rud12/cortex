@@ -138,6 +138,34 @@ body[data-theme='light'] .cortex-card:hover {
   border-radius: 14px;
 }
 
+.pos-picker-product-card {
+  appearance: none;
+  color: #FFFFFF !important;
+  display: block;
+  font: inherit;
+  text-align: left !important;
+  width: 100%;
+}
+
+.pos-picker-product-card,
+.pos-picker-product-card * {
+  color: #FFFFFF !important;
+}
+
+.pos-picker-product-meta {
+  opacity: 0.78;
+}
+
+body[data-theme='light'] .pos-picker-product-card,
+body[data-theme='light'] .pos-picker-product-card * {
+  color: #0E1726 !important;
+}
+
+body[data-theme='light'] .pos-picker-product-meta {
+  color: #7A8799 !important;
+  opacity: 1;
+}
+
 /* ══════════════════════════════════════════════════
    Chip
    ══════════════════════════════════════════════════ */

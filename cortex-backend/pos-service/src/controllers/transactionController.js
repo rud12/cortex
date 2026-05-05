@@ -15,11 +15,24 @@ const DATA_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..
 const BILL_ROOT = path.join(DATA_ROOT, 'bills');
 const dispatcher = new Agent({ connect: { rejectUnauthorized: false } });
 
-const round2 = v => Number(v.toFixed(2));
+const toNum = (v, fallback = 0) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
+};
+const round2 = (v, fallback = 0) => Math.round((toNum(v, fallback) + Number.EPSILON) * 100) / 100;
 const genBill = (d = new Date()) => `BILL-${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
 
 const fetchApi = async (url, method = 'GET', token, body) => {
-  const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json', ...(token && { Authorization: token.includes('Bearer') ? token : `Bearer ${token}` }) }, body: body ? JSON.stringify(body) : undefined, dispatcher });
+  let res;
+  try {
+    res = await fetch(url, { method, headers: { 'Content-Type': 'application/json', ...(token && { Authorization: token.includes('Bearer') ? token : `Bearer ${token}` }) }, body: body ? JSON.stringify(body) : undefined, dispatcher });
+  } catch (cause) {
+    const err = new Error('Required backend service is unavailable');
+    err.status = 503;
+    err.code = 'UPSTREAM_UNAVAILABLE';
+    err.cause = cause;
+    throw err;
+  }
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data?.success) throw new Error(data?.error?.message || data?.message || `API failed (${res.status})`);
   return data;
@@ -67,7 +80,15 @@ export const createTransaction = async (req, res, next) => {
       if (!i?.productId || Number(i.quantity) <= 0) throw new Error('Invalid item payload');
       const p = (await fetchApi(`${INVENTORY_URL}/api/v1/products/${encodeURIComponent(i.productId)}`, 'GET', token)).data;
       if (!p) throw new Error('Product not found');
-      const q = Number(i.quantity), u = round2(p.retailPrice), t = round2(u * q), cgR = round2(p.cgstRate ?? defCgst), sgR = round2(p.sgstRate ?? defSgst);
+      const q = toNum(i.quantity);
+      const u = round2(p.retailPrice);
+      if (u <= 0) {
+        const err = new Error(`Invalid price for ${p.name || p.sku || i.productId}`);
+        err.status = 400;
+        err.code = 'INVALID_PRODUCT_PRICE';
+        throw err;
+      }
+      const t = round2(u * q), cgR = round2(p.cgstRate ?? defCgst), sgR = round2(p.sgstRate ?? defSgst);
       return { productId: p.id, sku: p.sku, productName: p.name, barcode: p.barcode || null, quantity: q, unitPrice: u, totalPrice: t, cgstRate: cgR, sgstRate: sgR, cgstAmount: round2(t * cgR / 100), sgstAmount: round2(t * sgR / 100) };
     }));
 

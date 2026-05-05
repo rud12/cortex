@@ -25,6 +25,18 @@ const hideSpin = { '& input[type=number]': { MozAppearance:'textfield' }, '& inp
 const digs = (v) => String(v||'').replace(/\D/g,'');
 const num = (v) => v===''? '': Number(v);
 
+const ProductField = ({ lbl, k, numT, isVar, i, form, onUpdate, onUpdateVar, props }) => (
+  <TextField
+    label={lbl} type={numT?'number':'text'} sx={numT?hideSpin:undefined}
+    value={numT ? num(isVar ? form.vars[i][k] : form[k]) : (isVar ? form.vars[i][k] : form[k])}
+    onChange={e => {
+      let v = e.target.value; if(k==='barcode') v=digs(v);
+      if(isVar) onUpdateVar(i, k, v); else onUpdate(k, v);
+    }}
+    {...props}
+  />
+);
+
 export default function ProductForm({ open, onClose, initial }) {
   const isSm = useMediaQuery(useTheme().breakpoints.down('sm'));
   const [load, setLoad] = useState(false);
@@ -120,18 +132,7 @@ export default function ProductForm({ open, onClose, initial }) {
 
   const update = (k, v) => setF(p => ({...p, [k]: v}));
   const updateVar = (i, k, v) => setF(p => { const nv=[...p.vars]; nv[i]={...nv[i], [k]:v}; return {...p, vars:nv}; });
-
-  const Fbox = ({lbl, k, numT, isVar, i, props}) => (
-    <TextField
-      label={lbl} type={numT?'number':'text'} sx={numT?hideSpin:undefined}
-      value={numT ? num(isVar ? f.vars[i][k] : f[k]) : (isVar ? f.vars[i][k] : f[k])}
-      onChange={e => {
-        let v = e.target.value; if(k==='barcode') v=digs(v);
-        if(isVar) updateVar(i, k, v); else update(k, v);
-      }}
-      {...props}
-    />
-  );
+  const fieldProps = { form: f, onUpdate: update, onUpdateVar: updateVar };
 
   return (
     <Dialog open={open} onClose={() => onClose(false)} fullWidth maxWidth="md" fullScreen={isSm} PaperProps={{ className: 'cortex-dialog-paper' }}>
@@ -139,16 +140,16 @@ export default function ProductForm({ open, onClose, initial }) {
       <DialogContent>
         <Box component="form" onSubmit={save} sx={{ display: 'grid', gap: 2, mt: 1 }}>
           <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
-            <Fbox lbl="SKU" k="sku" /> <Fbox lbl="Name" k="name" /> <Fbox lbl="Brand" k="brand" />
+            <ProductField {...fieldProps} lbl="SKU" k="sku" /> <ProductField {...fieldProps} lbl="Name" k="name" /> <ProductField {...fieldProps} lbl="Brand" k="brand" />
             {!f.hasVar && (
               <>
-                <Fbox lbl="Barcode" k="barcode" props={{
+                <ProductField {...fieldProps} lbl="Barcode" k="barcode" props={{
                   inputProps:{inputMode:'numeric'},
                   InputProps:{endAdornment:<InputAdornment position="end"><IconButton onClick={()=>setScan({open:true, type:'p', idx:-1})}><CameraIcon fontSize="small"/></IconButton></InputAdornment>}
                 }} />
-                <Fbox lbl="Retail Price" k="price" numT /> <Fbox lbl="MRP" k="mrp" numT />
-                <Fbox lbl="Reorder Level" k="min" numT /> <Fbox lbl="Max Stock Level" k="max" numT />
-                <Fbox lbl="CGST %" k="cgst" numT /> <Fbox lbl="SGST %" k="sgst" numT />
+                <ProductField {...fieldProps} lbl="Retail Price" k="price" numT /> <ProductField {...fieldProps} lbl="MRP" k="mrp" numT />
+                <ProductField {...fieldProps} lbl="Reorder Level" k="min" numT /> <ProductField {...fieldProps} lbl="Max Stock Level" k="max" numT />
+                <ProductField {...fieldProps} lbl="CGST %" k="cgst" numT /> <ProductField {...fieldProps} lbl="SGST %" k="sgst" numT />
               </>
             )}
           </Box>
@@ -176,14 +177,14 @@ export default function ProductForm({ open, onClose, initial }) {
                       <IconButton color="error" onClick={() => setF(p => ({...p, vars: p.vars.filter((_, idx)=>idx!==i).length ? p.vars.filter((_, idx)=>idx!==i) : [emptyVar(tax)]}))}><DeleteIcon /></IconButton>
                     </Box>
                     <Box sx={{ display: 'grid', gap: 1, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
-                      <Fbox lbl="Name" k="name" isVar i={i} /> <Fbox lbl="SKU (opt)" k="sku" isVar i={i} />
-                      <Fbox lbl="Barcode" k="barcode" isVar i={i} props={{
+                      <ProductField {...fieldProps} lbl="Name" k="name" isVar i={i} /> <ProductField {...fieldProps} lbl="SKU (opt)" k="sku" isVar i={i} />
+                      <ProductField {...fieldProps} lbl="Barcode" k="barcode" isVar i={i} props={{
                         inputProps:{inputMode:'numeric'},
                         InputProps:{endAdornment:<InputAdornment position="end"><IconButton onClick={()=>setScan({open:true, type:'v', idx:i})}><CameraIcon fontSize="small"/></IconButton></InputAdornment>}
                       }}/>
-                      <Fbox lbl="Retail Price" k="price" numT isVar i={i} /> <Fbox lbl="MRP" k="mrp" numT isVar i={i} />
-                      <Fbox lbl="Reorder Level" k="min" numT isVar i={i} /> <Fbox lbl="Max Stock Level" k="max" numT isVar i={i} />
-                      <Fbox lbl="CGST %" k="cgst" numT isVar i={i} /> <Fbox lbl="SGST %" k="sgst" numT isVar i={i} />
+                      <ProductField {...fieldProps} lbl="Retail Price" k="price" numT isVar i={i} /> <ProductField {...fieldProps} lbl="MRP" k="mrp" numT isVar i={i} />
+                      <ProductField {...fieldProps} lbl="Reorder Level" k="min" numT isVar i={i} /> <ProductField {...fieldProps} lbl="Max Stock Level" k="max" numT isVar i={i} />
+                      <ProductField {...fieldProps} lbl="CGST %" k="cgst" numT isVar i={i} /> <ProductField {...fieldProps} lbl="SGST %" k="sgst" numT isVar i={i} />
                       <Button variant="outlined" component="label" sx={{ gridColumn: { xs: '1', sm: '1 / span 2' } }}>
                         Upload Var Image <input type="file" hidden accept="image/*" onChange={e => updateVar(i, 'img', e.target.files?.[0])} />
                       </Button>

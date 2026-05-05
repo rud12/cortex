@@ -60,13 +60,34 @@ const saveImg = async (f, b, tag, segs) => {
   return `/inventory-data/${path.relative(path.resolve(__dirname, '../../../data'), fp).replace(/\\/g, '/')}`;
 };
 
+const parseRows = (raw) => {
+  if (Array.isArray(raw)) return raw.flatMap(parseRows);
+  if (typeof raw !== 'string') return raw ? [raw] : [];
+  const v = raw.trim();
+  if (!v) return [];
+  try {
+    const parsed = JSON.parse(v);
+    return Array.isArray(parsed) ? parsed : [parsed];
+  } catch {
+    return [];
+  }
+};
+
 const qErr = (res, e) => {
   if (e?.code !== 'P2002') return false;
   const t = e.meta?.target || [];
-  return error(res, 409, 'DUP', t.includes('variantName') ? 'Variant already exists' : `${t[0]||'Field'} exists`) || true;
+  const msg = t.includes('sku') ? 'SKU already exists'
+    : t.includes('variantName') ? 'Variant name already exists for this product'
+    : `${t[0]||'Field'} already exists`;
+  return error(res, 409, 'DUP', msg) || true;
 };
 
 const vSku = (p, v, i) => `${p}-${(v||`V${i}`).toUpperCase().replace(/[^A-Z0-9]+/g,'-').slice(0,18)}`;
+const uniqueSku = async (tx, base, ex) => {
+  let sku = base || `SKU-${Date.now()}`;
+  for (let n = 2; await tx.product.findFirst({ where: { sku, ...(ex ? { id: { not: ex } } : {}) }, select: { id: true } }); n++) sku = `${base}-${n}`;
+  return sku;
+};
 const dupParent = async (tx, b, ex) => b && await tx.product.findFirst({ where: { barcode: clean(b), parentProductId: null, ...(ex ? { id: { not: ex } } : {}) }, select: { id: true } });
 
 const getSts = async () => prisma.appSettings.upsert({ where: { id: 'default' }, update: {}, create: { id: 'default' } });
@@ -79,7 +100,7 @@ export const createProduct = async (req, res, next) => {
     const sku = clean(b.sku), name = clean(b.name), pBc = clean(b.barcode);
     if (!sku || !name) return error(res, 400, 'INV', 'SKU/name req');
     const s = await getSts(), d = { cgst: num(s.defaultCgst,0), sgst: num(s.defaultSgst,0) };
-    const vars = hasV ? (Array.isArray(b.variants)?b.variants:[]).map((v,i) => pVar(v,i,d)) : [];
+    const vars = hasV ? parseRows(b.variants).map((v,i) => pVar(v,i,d)) : [];
     if (hasV && !vars.length) return error(res, 400, 'INV', 'Variant req');
     const rp = num(b.retailPrice, hasV ? vars[0]?.rp : null), mrp = num(b.mrp, hasV ? vars[0]?.mrp : null);
     if (rp===null || mrp===null) return error(res, 400, 'INV', 'Price req');
@@ -94,7 +115,7 @@ export const createProduct = async (req, res, next) => {
       if (pImg?.buffer) await tx.product.update({ where: { id: p.id }, data: { imageUrl: await saveImg(pImg, pImg.buffer, `${p.id}-main`, [ow]) } });
       
       for (const [i, v] of vars.entries()) {
-        const vp = await tx.product.create({ data: { sku: v.sku||vSku(sku, v.name, i), name: `${name} - ${v.name}`, description: clean(b.description), brand: clean(b.brand), barcode: v.bc, retailPrice: v.rp, mrp: v.mrp, reorderLevel: v.rl, maxStockLevel: v.ml, supplierId: clean(b.supplierId), imageUrl: '/product_placeholder.png', hasVariants: false, hasExpiryDate: exp, parentProductId: p.id, variantName: v.name, cgstRate: v.cgst, sgstRate: v.sgst } });
+        const vp = await tx.product.create({ data: { sku: v.sku||await uniqueSku(tx, vSku(sku, v.name, i)), name: `${name} - ${v.name}`, description: clean(b.description), brand: clean(b.brand), barcode: v.bc, retailPrice: v.rp, mrp: v.mrp, reorderLevel: v.rl, maxStockLevel: v.ml, supplierId: clean(b.supplierId), imageUrl: '/product_placeholder.png', hasVariants: false, hasExpiryDate: exp, parentProductId: p.id, variantName: v.name, cgstRate: v.cgst, sgstRate: v.sgst } });
         await tx.inventoryItem.create({ data: { productId: vp.id, quantityOnHand: 0 } });
         const vf = fM.get(v.imgF) || fM.get(`variantImage_${i}`) || fM.get(`variantImage_${vp.id}`);
         if (vf?.buffer) await tx.product.update({ where: { id: vp.id }, data: { imageUrl: await saveImg(vf, vf.buffer, `${p.id}-${vp.id}`, [ow]) } });
@@ -131,7 +152,7 @@ export const updateProduct = async (req, res, next) => {
     const b = req.body || {}, hasV = bool(b.hasVariants, pInfo.hasVariants), exp = bool(b.hasExpiryDate, pInfo.hasExpiryDate);
     const incBc = b.barcode==='' ? null : clean(b.barcode, undefined);
     const s = await getSts(), d = { cgst: num(s.defaultCgst,0), sgst: num(s.defaultSgst,0) };
-    const vars = hasV ? (Array.isArray(b.variants)?b.variants:[]).map((v,i) => pVar(v,i,d)) : [];
+    const vars = hasV ? parseRows(b.variants).map((v,i) => pVar(v,i,d)) : [];
     if (hasV && !vars.length) return error(res, 400, 'INV', 'Variant req');
     
     const pImg = findF(req.files, ['image','parentImage','productImage']), fM = fMap(req.files);
@@ -153,7 +174,8 @@ export const updateProduct = async (req, res, next) => {
         let cId = tid;
         if (tid) await tx.product.update({ where: { id: tid }, data: { sku: v.sku||vMap.get(tid).sku, name: `${clean(b.name, pInfo.name)} - ${v.name}`, variantName: v.name, barcode: v.bc, retailPrice: v.rp, mrp: v.mrp, reorderLevel: v.rl, maxStockLevel: v.ml, cgstRate: v.cgst, sgstRate: v.sgst, hasExpiryDate: exp, supplierId: b.supplierId===''?null:clean(b.supplierId, vMap.get(tid).supplierId) } });
         else {
-          const vp = await tx.product.create({ data: { sku: v.sku||vSku(clean(b.sku, pInfo.sku), v.name, i), name: `${clean(b.name, pInfo.name)} - ${v.name}`, description: clean(b.description, pInfo.description), brand: clean(b.brand, pInfo.brand), barcode: v.bc, retailPrice: v.rp, mrp: v.mrp, reorderLevel: v.rl, maxStockLevel: v.ml, supplierId: b.supplierId===''?null:clean(b.supplierId, pInfo.supplierId), imageUrl: '/product_placeholder.png', hasVariants: false, hasExpiryDate: exp, parentProductId: pInfo.id, variantName: v.name, cgstRate: v.cgst, sgstRate: v.sgst } });
+          const baseSku = vSku(clean(b.sku, pInfo.sku), v.name, i);
+          const vp = await tx.product.create({ data: { sku: v.sku||await uniqueSku(tx, baseSku), name: `${clean(b.name, pInfo.name)} - ${v.name}`, description: clean(b.description, pInfo.description), brand: clean(b.brand, pInfo.brand), barcode: v.bc, retailPrice: v.rp, mrp: v.mrp, reorderLevel: v.rl, maxStockLevel: v.ml, supplierId: b.supplierId===''?null:clean(b.supplierId, pInfo.supplierId), imageUrl: '/product_placeholder.png', hasVariants: false, hasExpiryDate: exp, parentProductId: pInfo.id, variantName: v.name, cgstRate: v.cgst, sgstRate: v.sgst } });
           await tx.inventoryItem.create({ data: { productId: vp.id, quantityOnHand: 0 } });
           cId = vp.id;
         }

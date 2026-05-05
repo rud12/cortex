@@ -38,8 +38,8 @@ const Picker = ({ open, onClose, prods, onPick, defQ='', fs=false }) => {
         <TextField autoFocus label="Search" fullWidth value={q} onChange={e=>setQ(e.target.value)} sx={{mt:1}} />
         <Box sx={{ mt:2, display:'grid', gap:1 }}>
           {ls.map(p => (
-            <button key={p.id} type="button" onClick={()=>onPick(p)} className="cortex-card p-4 text-left hover:brightness-110 transition">
-              <div className="flex justify-between gap-3"><div className="min-w-0"><div className="font-semibold truncate">{dispName(p)}</div><div className="text-xs text-white/60 truncate">SKU: {p.sku} • Barcode: {p.barcode||'—'} • {subLbl(p)}</div></div><div className="font-extrabold">{formatMoney(p.retailPrice)}</div></div>
+            <button key={p.id} type="button" onClick={()=>onPick(p)} className="cortex-card pos-picker-product-card p-4 hover:brightness-110 transition">
+              <div className="flex justify-between gap-3"><div className="min-w-0"><div className="pos-picker-product-title font-semibold truncate">{dispName(p)}</div><div className="pos-picker-product-meta text-xs truncate">SKU: {p.sku} • Barcode: {p.barcode||'—'} • {subLbl(p)}</div></div><div className="pos-picker-product-price font-extrabold">{formatMoney(p.retailPrice)}</div></div>
             </button>
           ))}
           {!ls.length && <Box className="cortex-card" sx={{ p:2, color:'rgba(255,255,255,0.75)' }}>No matches</Box>}
