@@ -21,7 +21,8 @@ def _find_yolo_model() -> str:
     if path.resolve().exists() and path.resolve().is_file(): return str(path.resolve())
     raise FileNotFoundError("yolov8n.pt not found.")
 
-def _mobilenet_cache_path() -> Path: return Path(__file__).resolve().parents[3] / "data" / "models" / MOBILENET_WEIGHTS_FILE
+def _mobilenet_cache_path() -> Path: 
+    return Path(__file__).resolve().parents[3] / "data" / "models" / MOBILENET_WEIGHTS_FILE
 
 def _load_mobilenet_weights(path: Path):
     loaded = torch.load(str(path), map_location="cpu")
@@ -63,14 +64,19 @@ def init(root_dir: str, roi: tuple):
     state["ready"] = True
 
 def process_frame(frame: np.ndarray) -> np.ndarray:
-    if not state.get("ready"): return frame
-    if state["frame_h"] == 0: state["frame_h"], state["frame_w"] = frame.shape[:2]
+    if not state.get("ready"): 
+        return frame
+    if state["frame_h"] == 0: 
+        state["frame_h"], state["frame_w"] = frame.shape[:2]
     state["frame"] += 1
-    if state["frame"] % FRAME_SKIP != 0: _age_tracks(); return _draw(frame)
+    if state["frame"] % FRAME_SKIP != 0: 
+        _age_tracks()
+        return _draw(frame)
 
     try:
         boxes = [b for b in state["yolo"](frame, conf=YOLO_CONF, verbose=False)[0].boxes.xyxy.cpu().numpy().astype(int) if _is_valid_box(b)]
-    except: _age_tracks(); return _draw(frame)
+    except: 
+        _age_tracks(); return _draw(frame)
 
     try: 
         embeddings = state["embedder"].batch([frame[b[1]:b[3], b[0]:b[2]] for b in boxes])
